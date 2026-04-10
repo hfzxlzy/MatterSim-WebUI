@@ -70,4 +70,21 @@ webui/inference/addons/
 - presets.py：训练参数预设
 - ui.py：训练界面
 
+---
+
+## 参考文献（Reference）
+  
+如果你在科研或项目中使用 MatterSim-WebUI，请同时引用 MatterSim 的原始预印本：
+```bash
+@article{yang2024mattersim,
+      title={MatterSim: A Deep Learning Atomistic Model Across Elements, Temperatures and Pressures},
+      author={Han Yang and Chenxi Hu and Yichi Zhou and Xixian Liu and Yu Shi and Jielan Li and Guanzhi Li and Zekun Chen and Shuizhou Chen and Claudio Zeni and Matthew Horton and Robert Pinsler and Andrew Fowler and Daniel Zügner and Tian Xie and Jake Smith and Lixin Sun and Qian Wang and Lingyu Kong and Chang Liu and Hongxia Hao and Ziheng Lu},
+      year={2024},
+      eprint={2405.04967},
+      archivePrefix={arXiv},
+      primaryClass={cond-mat.mtrl-sci},
+      url={https://arxiv.org/abs/2405.04967},
+      journal={arXiv preprint arXiv:2405.04967}
+}
+```
 
