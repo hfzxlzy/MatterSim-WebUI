@@ -1,3 +1,7 @@
+<p align="right">
+ <a href="README_EN.md">English</a> | 中文
+</p>
+
 # MatterSim WebUI
 MatterSim WebUI 是一个基于 Streamlit 的图形界面，用于可视化、管理和运行 MatterSim 的推理与训练任务。  
 本项目采用模块化架构设计，支持插件扩展、结构可视化、声子计算、结构优化、模型训练等功能。
