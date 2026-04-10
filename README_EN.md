@@ -1,3 +1,7 @@
+<p align="right">
+ English | <a href="README.md">中文</a>
+</p>
+
 #  **MatterSim WebUI **
 
 MatterSim WebUI is a Streamlit‑based graphical interface for visualizing, managing, and running inference and training tasks with **MatterSim**.  
