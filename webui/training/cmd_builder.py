@@ -14,7 +14,7 @@ def add_flag(cmd, flag, is_set):
 def build_training_cmd(**kwargs):
     cmd = [
         SIM_ENV_TORCHRUN, "--nproc_per_node=1",
-        "/opt/MatterSim/mattersim/src/mattersim/training/finetune_mattersim.py"
+        "/your/path/of/MatterSim/mattersim/src/mattersim/training/finetune_mattersim.py"
     ]
 
     add_arg(cmd, "--run_name", kwargs["run_name"])

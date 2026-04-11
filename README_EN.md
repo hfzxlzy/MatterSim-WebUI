@@ -66,6 +66,7 @@ Before running the WebUI, update the following files and replace
 
 - `webui/core/env.py`
 - `webui/training/presets.py`
+- `webui/training/cmd_builder.py`
 - `webui/inference/ui.py`
 
 ---

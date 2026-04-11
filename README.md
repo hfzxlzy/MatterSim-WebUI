@@ -44,9 +44,11 @@ pip install streamlit psutil py3Dmol pandas matplotlib
 `/your/path/of/MatterSim` 替换为你自己的 MatterSim 安装路径：
 - `webui/core/env.py`
 - `webui/training/presets.py`
+- `webui/training/cmd_builder.py`
 - `webui/inference/ui.py`
 
 ### 5. 运行
+
 修改完成后，使用以下命令运行 WebUI（同样请替换路径）：
 ```bash
 /your/path/of/MatterSim/sim_env/bin/python3 -m streamlit run /your/path/of/MatterSim/webui/webui1.2.1.py
