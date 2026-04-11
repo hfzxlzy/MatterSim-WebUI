@@ -51,7 +51,7 @@ pip install streamlit psutil py3Dmol pandas matplotlib
 
 修改完成后，使用以下命令运行 WebUI（同样请替换路径）：
 ```bash
-/your/path/of/MatterSim/sim_env/bin/python3 -m streamlit run /your/path/of/MatterSim/webui/webui1.2.1.py
+/your/path/of/MatterSim/sim_env/bin/python3 -m streamlit run /your/path/of/MatterSim/webui/webui1.0.1.py
 ```
 
 ---
