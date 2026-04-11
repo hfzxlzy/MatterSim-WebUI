@@ -1,4 +1,3 @@
-# ⭐ **3. SECURITY.md（安全策略 | Security Policy）**
 # Security Policy  
 # 安全策略
 
