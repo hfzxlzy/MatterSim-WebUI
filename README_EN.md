@@ -76,7 +76,7 @@ Before running the WebUI, update the following files and replace
 After updating the paths, launch the WebUI with:
 
 ```bash
-/your/path/of/MatterSim/sim_env/bin/python3 -m streamlit run /your/path/of/MatterSim/webui/webui1.2.1.py
+/your/path/of/MatterSim/sim_env/bin/python3 -m streamlit run /your/path/of/MatterSim/webui/webui1.0.1.py
 ```
 
 ---
