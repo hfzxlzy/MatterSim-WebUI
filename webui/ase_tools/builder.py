@@ -31,7 +31,7 @@ def show_structure_builder():
                 prefix="builder"
             )
             st.subheader("导出结构")
-            fmt = st.selectbox("选择导出格式", ["xyz", "cif", "vasp"], key="builder_export_fmt")
+            fmt = st.selectbox("选择导出格式", ["xyz", "cif", "vasp", "in", "POSCAR"], key="builder_export_fmt")
 
             buf = StringIO()
             st.session_state["builder_atoms"].write(buf, format=fmt)
