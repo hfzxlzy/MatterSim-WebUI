@@ -126,7 +126,6 @@ def structure_input_block(key_prefix=""):
     # --- 上传结构文件UI（支持多个） ---
     if mode == "上传结构文件":
         uploaded_files = st.file_uploader(
-            uploaded_files = st.file_uploader(
             "上传结构文件 (.xyz/.cif/.in/.POSCAR)，可多选",
             type=["xyz", "cif", "vasp", "txt", "in", "POSCAR"],
             accept_multiple_files=True,
