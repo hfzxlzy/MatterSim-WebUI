@@ -65,6 +65,51 @@ print("Loaded structure for phonon calculation:", file)
     else:
         return "# 未知模式"
 
+# QE输入文件解析函数
+def parse_qe_structure(text):
+    # 解析 QE 输入文件中的结构信息，返回 ASE Atoms 对象
+    lines = text.splitlines()
+    # 解析 ATOMIC_SPECIES、ATOMIC_POSITIONS 和 CELL_PARAMETERS
+    species = []
+    positions = []
+    cell = []
+
+    mode = None
+    # 解析文件内容
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        # 识别不同部分的开始
+        if line.startswith("ATOMIC_SPECIES"):
+            mode = "species"
+            continue
+        if line.startswith("ATOMIC_POSITIONS"):
+            mode = "positions"
+            continue
+        if line.startswith("CELL_PARAMETERS"):
+            mode = "cell"
+            continue
+        # 解析不同部分的内容
+        if mode == "species":
+            parts = line.split()
+            species.append(parts[0])
+        # 解析原子位置和元素符号
+        elif mode == "positions":
+            parts = line.split()
+            positions.append([parts[0], float(parts[1]), float(parts[2]), float(parts[3])])
+        # 解析晶胞参数
+        elif mode == "cell":
+            parts = line.split()
+            cell.append([float(x) for x in parts])
+
+    # 构造 ASE Atoms
+    symbols = [p[0] for p in positions]
+    coords = np.array([p[1:] for p in positions], dtype=float)
+
+    atoms = Atoms(symbols=symbols, scaled_positions=coords, cell=cell, pbc=True)
+    return atoms
+
 #结构输入函数
 def structure_input_block(key_prefix=""):
     st.markdown("### 结构输入")
@@ -81,8 +126,9 @@ def structure_input_block(key_prefix=""):
     # --- 上传结构文件UI（支持多个） ---
     if mode == "上传结构文件":
         uploaded_files = st.file_uploader(
-            "上传结构文件 (.xyz/.cif/POSCAR)，可多选",
-            type=["xyz", "cif", "vasp", "txt"],
+            uploaded_files = st.file_uploader(
+            "上传结构文件 (.xyz/.cif/.in/.POSCAR)，可多选",
+            type=["xyz", "cif", "vasp", "txt", "in", "POSCAR"],
             accept_multiple_files=True,
             key=f"{key_prefix}_upload",
         )
@@ -97,15 +143,20 @@ def structure_input_block(key_prefix=""):
                     fmt = "xyz"
                 elif filename.endswith(".cif"):
                     fmt = "cif"
+                elif filename.endswith(".in"):
+                    fmt = "qe-structure"
                 else:
                     fmt = "vasp"
-
-                # 读取结构
-                try:
-                    text = raw.decode("utf-8")
-                    atoms = read(StringIO(text), format=fmt)
-                except UnicodeDecodeError:
-                    atoms = read(BytesIO(raw), format=fmt)
+                # 尝试用文本方式解析，失败后用二进制方式解析（处理不同类型的文件上传）
+                text = raw.decode("utf-8", errors="ignore")
+                # 如果是 QE 结构片段 .in 文件 → 用自定义解析器
+                if filename.endswith(".in"):
+                    atoms = parse_qe_structure(text)
+                else:
+                    try:
+                        atoms = read(StringIO(text), format=fmt)
+                    except Exception:
+                        atoms = read(BytesIO(raw), format=fmt)
 
                 # 写入临时文件
                 tmp_path = f"/tmp/{filename}"
