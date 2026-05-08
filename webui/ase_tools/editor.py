@@ -3,6 +3,8 @@
 import streamlit as st
 # 调用pandas库处理结构数据表格
 import pandas as pd
+# 调用nmpy库进行数值计算
+import numpy as np
 # 调用io库处理文件输入输出
 from io import StringIO, BytesIO
 # 调用ase库读取结构文件并进行处理
@@ -11,11 +13,57 @@ from ase.io import read
 #调用render模块中的函数渲染结构和相关信息
 from webui.ase_tools.render import render_structure_with_info
 
+# QE输入文件解析函数
+def parse_qe_structure(text):
+    # 解析 QE 输入文件中的结构信息，返回 ASE Atoms 对象
+    lines = text.splitlines()
+    # 解析 ATOMIC_SPECIES、ATOMIC_POSITIONS 和 CELL_PARAMETERS
+    species = []
+    positions = []
+    cell = []
+
+    mode = None
+    # 解析文件内容
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        # 识别不同部分的开始
+        if line.startswith("ATOMIC_SPECIES"):
+            mode = "species"
+            continue
+        if line.startswith("ATOMIC_POSITIONS"):
+            mode = "positions"
+            continue
+        if line.startswith("CELL_PARAMETERS"):
+            mode = "cell"
+            continue
+        # 解析不同部分的内容
+        if mode == "species":
+            parts = line.split()
+            species.append(parts[0])
+        # 解析原子位置和元素符号
+        elif mode == "positions":
+            parts = line.split()
+            positions.append([parts[0], float(parts[1]), float(parts[2]), float(parts[3])])
+        # 解析晶胞参数
+        elif mode == "cell":
+            parts = line.split()
+            cell.append([float(x) for x in parts])
+
+    # 构造 ASE Atoms
+    symbols = [p[0] for p in positions]
+    coords = np.array([p[1:] for p in positions], dtype=float)
+
+    atoms = Atoms(symbols=symbols, scaled_positions=coords, cell=cell, pbc=True)
+    return atoms
+
+
 # 结构编辑组件
 def show_structure_editor():
     st.header("结构编辑")
 
-    uploaded = st.file_uploader("上传结构文件进行编辑", type=["xyz", "cif", "vasp", "txt"])
+    uploaded = st.file_uploader("上传结构文件进行编辑", type=["xyz", "cif", "vasp", "txt", "in", "POSCAR"])
 
     if not uploaded:
         st.info("请先上传结构文件")
@@ -28,14 +76,20 @@ def show_structure_editor():
         fmt = "xyz"
     elif filename.endswith(".cif"):
         fmt = "cif"
+    elif filename.endswith(".in"):
+        fmt = "qe-structure"
     else:
         fmt = "vasp"
-
-    try:
-        text = raw.decode("utf-8")
-        atoms = read(StringIO(text), format=fmt)
-    except UnicodeDecodeError:
-        atoms = read(BytesIO(raw), format=fmt)
+    # 尝试用文本方式解析，失败后用二进制方式解析（处理不同类型的文件上传）
+    text = raw.decode("utf-8", errors="ignore")
+    # 如果是 QE 结构片段 .in 文件 → 用自定义解析器
+    if filename.endswith(".in"):
+        atoms = parse_qe_structure(text)
+    else:
+        try:
+            atoms = read(StringIO(text), format=fmt)
+        except Exception:
+            atoms = read(BytesIO(raw), format=fmt)
 
     # -----------------------------
     # 1. 构建可编辑 DataFrame（带复选框）
