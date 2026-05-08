@@ -65,7 +65,7 @@ def show_structure_builder():
                 prefix="supercell"
             )
             st.subheader("导出结构")
-            fmt = st.selectbox("选择导出格式", ["xyz", "cif", "vasp"], key="supercell_export_fmt")
+            fmt = st.selectbox("选择导出格式", ["xyz", "cif", "vasp", "in", "POSCAR"], key="supercell_export_fmt")
 
             buf = StringIO()
             st.session_state["supercell_atoms"].write(buf, format=fmt)
