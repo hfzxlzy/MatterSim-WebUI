@@ -1,3 +1,4 @@
+# ASE结构查看组件
 # 调用nmpy库进行数值计算
 import numpy as np
 # 调用streamlit库构建结构查看界面
