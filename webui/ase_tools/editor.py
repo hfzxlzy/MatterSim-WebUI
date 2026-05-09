@@ -58,7 +58,6 @@ def parse_qe_structure(text):
     atoms = Atoms(symbols=symbols, scaled_positions=coords, cell=cell, pbc=True)
     return atoms
 
-
 # 结构编辑组件
 def show_structure_editor():
     st.header("结构编辑")
