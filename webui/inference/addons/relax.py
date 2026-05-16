@@ -72,11 +72,11 @@ for (path, atoms) in zip(files, relaxed_structures):
 # 插件注册函数（关键）
 # -----------------------------
 def register_plugin(ScriptModule):
-    #定义Relax插件
+    #声明载入Relax插件
     class RelaxScript(ScriptModule):
         #指定输入类型(mx1)
         supported_structure_mode = "mx1"
-        #定义Relax模式专有参数
+        #声明Relax模式专有参数
         def get_extra_parameters(self):
             file_list = st.session_state.get("file_list", [])
             n = len(file_list)

@@ -5,6 +5,8 @@ import streamlit as st
 import py3Dmol
 # 调用io库中的StringIO类处理字符串输入输出，方便在Web界面上显示结构信息
 from io import StringIO
+# 导入steamlit的components模块，提供了在Streamlit应用中嵌入HTML、JavaScript等自定义组件的功能
+import streamlit.components.v1 as components
 
 # 结构渲染函数
 def render_structure_with_info(
@@ -287,4 +289,4 @@ def render_structure_with_info(
     </div>
     """
 
-    st.components.v1.html(html_top, height=650)
+    components.html(html_top, height=650)

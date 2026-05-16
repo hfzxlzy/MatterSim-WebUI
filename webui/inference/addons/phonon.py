@@ -27,11 +27,11 @@ print("Phonon frequencies:", phonons)
 # 插件注册函数
 # -----------------------------
 def register_plugin(ScriptModule):
-    #定义Phonon插件
+    #声明载入Phonon插件
     class PhononScript(ScriptModule):
         #指定输入类型(1x1)
         supported_structure_mode = "1x1"
-        #定义Phonon模式专有参数
+        #声明Phonon模式专有参数
         def get_extra_parameters(self):
             return {
                 "supercell": {

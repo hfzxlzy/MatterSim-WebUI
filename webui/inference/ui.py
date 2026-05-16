@@ -125,7 +125,7 @@ def inference_ui():
         plugin = SCRIPT_REGISTRY[mode]
         # 显示插件标题
         st.subheader(f"{mode} 模式参数")
-        # 插件参数（自动渲染）
+        # 插件参数（自动渲染专用UI）
         render_plugin_parameters(plugin)
         # 实时更新脚本
         update_script()
@@ -136,7 +136,7 @@ def inference_ui():
         st.subheader("脚本预览")
         edited_script = st.text_area(
             "可编辑脚本",
-            value=st.session_state.generated_script,
+            #value=st.session_state.generated_script,
             height=400,
             key="generated_script_editor"
         )
@@ -152,3 +152,9 @@ def inference_ui():
                 daemon=True
             ).start()
             st.success("脚本已开始运行，请查看日志输出。")
+        # -----------------------------
+        # 插件结果展示 UI 注入点
+        # -----------------------------
+        if hasattr(plugin, "render_result_ui"):
+            with st.expander("结果展示（点击展开/收起）", expanded=False):
+                plugin.render_result_ui()

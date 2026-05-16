@@ -37,11 +37,11 @@ for i, (e, f, s) in enumerate(zip(energies, forces, stresses)):
 # 插件注册函数（关键）
 # -----------------------------
 def register_plugin(ScriptModule):
-    #定义Predict插件
+    #声明载入Predict插件
     class PredictScript(ScriptModule):
         #指定输入类型(mxn)
         supported_structure_mode = "mxn"
-        #定义Predict模式专有参数
+        #声明Predict模式专有参数
         def get_extra_parameters(self):
             return {
                 "repeat_n": {
