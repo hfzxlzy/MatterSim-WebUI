@@ -5,15 +5,11 @@ import streamlit as st
 import time
 # 调用threading库实现训练过程的多线程执行
 import threading
-
-from webui.core.env import SIM_ENV_TORCHRUN
-from webui.core.runner import run_command
-from webui.core.history import load_history, save_history
+# 调用环境设置(模型位置、训练数据、验证数据、结果保存位置)
+from webui.core.env import MODEL_PRESETS, TRAIN_DATA_PRESETS, VAL_DATA_PRESETS, SAVE_DIR_PRESETS
 # 调用训练命令构建器模块中的函数构建训练命令
 from webui.training.cmd_builder import build_training_cmd, build_pretty_cmd
 from webui.training.executor import start_training
-# 调用训练预设位置模块中的预设路径列表
-from webui.training.presets import MODEL_PRESETS, TRAIN_DATA_PRESETS, VAL_DATA_PRESETS, SAVE_DIR_PRESETS
 
 # 训练界面组件
 def show_training_page():

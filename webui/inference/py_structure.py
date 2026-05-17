@@ -1,4 +1,6 @@
 # 结构输入相关模块
+# 调用os库
+import os
 # 调用streamlit库
 import streamlit as st
 # 调用ase库
@@ -11,6 +13,8 @@ from ase.build import bulk
 import numpy as np
 # 调用io库,用于文件处理
 from io import StringIO, BytesIO
+# 
+from webui.core.env import TMP
 
 #通用对象结构片段生成函数
 def generate_structure_input(state):
@@ -158,7 +162,7 @@ def structure_input_block(key_prefix=""):
                         atoms = read(BytesIO(raw), format=fmt)
 
                 # 写入临时文件
-                tmp_path = f"/tmp/{filename}"
+                tmp_path = os.path.join(TMP, filename)
                 write(tmp_path, atoms)
                 file_list.append(tmp_path)
 
@@ -195,7 +199,7 @@ def structure_input_block(key_prefix=""):
                     if not isinstance(atoms, Atoms):
                         st.error("变量 atoms 不是 ASE Atoms 对象")
                     else:
-                        tmp_path = "/tmp/webui_manual_structure.xyz"
+                        tmp_path = os.path.join(TMP, "webui_manual_structure.xyz")
                         write(tmp_path, atoms, format="xyz")
 
                         st.session_state.file_list = [tmp_path]

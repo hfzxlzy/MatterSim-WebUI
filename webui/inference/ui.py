@@ -1,11 +1,13 @@
 # 推理模式基本ui
-# 调用streamlit库进行界面设计，torch库进行模型推理，threading库进行多线程处理
+# 调用streamlit库进行界面设计，torch库进行模型推理，threading库进行多线程处理，os库定义环境变量和路径常量
 import streamlit as st
 import torch
 import threading
-# 调用核心运行函数和环境配置
+import os
+# 调用核心运行函数
 from webui.core.runner import run_command
-from webui.core.env import SIM_ENV_PYTHON
+# 调用环境配置(python主环境、临时文件、模型位置)
+from webui.core.env import SIM_ENV_PYTHON,TMP,MODEL_PRESETS
 # 调用脚本生成器和结构输入组件
 from webui.inference.py_structure import structure_input_block
 from webui.inference.py_parameters import render_plugin_parameters
@@ -47,7 +49,7 @@ def inference_ui():
 
         # 4. 运行脚本
         if st.button("运行脚本", key="run_uploaded_script"):
-            script_path = "/tmp/mattersim_uploaded.py"
+            script_path = os.path.join(TMP, "mattersim_uploaded.py")
             with open(script_path, "w") as f:
                 f.write(edited_code)
 
@@ -84,7 +86,7 @@ def inference_ui():
                 #help=[帮助信息]
                 help="可从下拉列表中选择要使用的模型，或输入自定义模型路径，默认为None",
                 #options=[选项列表]
-                options=["/your/path/of/MatterSim/models/mattersim-v1.0.0-1M.pth", "/your/path/of/MatterSim/models/mattersim-v1.0.0-5M.pth"],
+                options=MODEL_PRESETS,
                 #index=[默认选项索引]
                 index=None,
                 #placeholder=[占位符]
@@ -141,7 +143,7 @@ def inference_ui():
             key="generated_script_editor"
         )
         if st.button("运行脚本", key="run_generated_script"):
-            script_path = "/tmp/mattersim_generated.py"
+            script_path = os.path.join(TMP, "mattersim_generated.py")
             with open(script_path, "w") as f:
                 f.write(edited_script)
 

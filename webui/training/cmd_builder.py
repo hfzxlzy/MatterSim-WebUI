@@ -1,6 +1,6 @@
 # 命令构建器模块
 # 调用环境变量模块获取torchrun命令路径
-from webui.core.env import SIM_ENV_TORCHRUN
+from webui.core.env import SIM_ENV_TORCHRUN,FINETUNE_MATTERSIM_DIR
 
 # 辅助函数：根据参数值添加命令行参数
 def add_arg(cmd, flag, value):
@@ -13,8 +13,10 @@ def add_flag(cmd, flag, is_set):
 # 构建训练命令的函数，根据用户输入的参数构建完整的命令列表
 def build_training_cmd(**kwargs):
     cmd = [
+        # torchrun训练模块位置，每个节点（机器）启动 1 个训练进程
         SIM_ENV_TORCHRUN, "--nproc_per_node=1",
-        "/your/path/of/MatterSim/mattersim/src/mattersim/training/finetune_mattersim.py"
+        # mattersim微调入口脚本位置
+        FINETUNE_MATTERSIM_DIR
     ]
 
     add_arg(cmd, "--run_name", kwargs["run_name"])
