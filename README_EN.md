@@ -44,7 +44,7 @@ https://github.com/microsoft/mattersim/blob/main/README.md#install-from-source-c
 ### 2. Install WebUI Dependencies
 
 ```bash
-pip install streamlit psutil py3Dmol pandas matplotlib
+pip install --upgrade streamlit psutil py3Dmol pandas matplotlib kaleido
 ```
 
 ---
@@ -65,9 +65,6 @@ Before running the WebUI, update the following files and replace
 `/your/path/of/MatterSim` with your actual MatterSim installation path:
 
 - `webui/core/env.py`
-- `webui/training/presets.py`
-- `webui/training/cmd_builder.py`
-- `webui/inference/ui.py`
 
 ---
 
@@ -104,8 +101,7 @@ Plugins are automatically loaded—no changes to core code are required.
 The training module includes:
 
 - `cmd_builder.py` — Builds `torchrun` commands  
-- `executor.py` — Executes training tasks  
-- `presets.py` — Training parameter presets  
+- `executor.py` — Executes training tasks   
 - `ui.py` — Training interface  
 
 ---

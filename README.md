@@ -30,7 +30,7 @@ https://github.com/microsoft/mattersim/blob/main/README.md#install-from-source-c
 ### 2. 安装WebUI依赖
 
 ```bash
-pip install streamlit psutil py3Dmol pandas matplotlib
+pip install --upgrade streamlit psutil py3Dmol pandas matplotlib kaleido
 ```
 
 ### 3. 放置 WebUI
@@ -40,12 +40,9 @@ pip install streamlit psutil py3Dmol pandas matplotlib
 
 ### 4. 修改路径
 
-在运行 WebUI 之前，请先修改以下文件中的路径，将其中的  
+在运行 WebUI 之前，请先修改环境文件中的路径，将其中的  
 `/your/path/of/MatterSim` 替换为你自己的 MatterSim 安装路径：
 - `webui/core/env.py`
-- `webui/training/presets.py`
-- `webui/training/cmd_builder.py`
-- `webui/inference/ui.py`
 
 ### 5. 运行
 
@@ -73,7 +70,6 @@ webui/inference/addons/
 训练模块包含：
 - cmd_builder.py：构建 torchrun 命令
 - executor.py：执行训练任务
-- presets.py：训练参数预设
 - ui.py：训练界面
 
 ---
