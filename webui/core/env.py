@@ -23,6 +23,8 @@ FINETUNE_MATTERSIM_DIR = os.path.join(MATTERSIM_ROOT, "mattersim//training/finet
 
 # 临时文件位置
 TMP = os.path.join(MATTERSIM_ROOT, "tmp")
+# 自动检测并创建 tmp 目录
+os.makedirs(TMP, exist_ok=True)
 
 # 模型预设路径列表，包含多个示例模型文件的路径
 MODEL_PRESETS = [
