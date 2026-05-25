@@ -158,5 +158,8 @@ def inference_ui():
         # 插件结果展示 UI 注入点
         # -----------------------------
         if hasattr(plugin, "render_result_ui"):
-            with st.expander("结果展示（点击展开/收起）", expanded=False):
+            # checkbox 控制显示
+            show = st.checkbox("结果展示", value=False)
+            # 如果选中，则调用插件的结果展示 UI 方法，取消选中则隐藏结果展示
+            if show:
                 plugin.render_result_ui()
