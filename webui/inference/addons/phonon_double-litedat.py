@@ -21,9 +21,10 @@ has_imag, phonons = ph.run()
 
 # 简单声子谱绘制数据获取函数
 def export_phonon_band(phonons, work_dir):   
-#  phonopy 对象获取 K-path labels
+    # phonopy 对象获取 K-path labels
     bs = phonons._band_structure
-    labels_info = bs.labels   # 这里就有 ["Γ","Z"], ["Z","D"], ...
+    labels_info = bs.labels    # 高对称点标签列表
+    path_connections = bs._path_connections    # 从 path_connections 获取段间连续性
     # 从 phonopy 对象获取完整 band 结构
     band = phonons.get_band_structure_dict()
     dist_list = band["distances"]
@@ -34,22 +35,6 @@ def export_phonon_band(phonons, work_dir):
     freqs = np.concatenate(freq_list, axis=0)  # shape = (nqpoint, 3N)
     # 拼成最终矩阵： (nqpoint, 1 + 3N)
     mat = np.hstack([distances.reshape(-1, 1), freqs])
-    # 定义断点集合
-    breaks = []
-    # 找出所有 distance 相同的 index
-    pos = {{}}
-    # 遍历所有 distance，记录出现位置
-    for i, d in enumerate(distances):
-        d = float(d)
-        pos.setdefault(d, []).append(i)
-    # 对每个 distance，检查是否出现两次以上
-    for d, idxs in pos.items():
-        if len(idxs) >= 2:
-            i1, i2 = idxs[0], idxs[1]
-            # 如果频率不同 → 真断点
-            if not np.allclose(freqs[i1], freqs[i2], atol=1e-8):
-                # 记录断点 distance
-                breaks.append(d)
     # 获取q点数和模式数
     nqpoint = mat.shape[0]
     nmodes = freqs.shape[1]
@@ -61,16 +46,31 @@ def export_phonon_band(phonons, work_dir):
     for n in segment_nq[:-1]:
         segment_start.append(segment_start[-1] + n)
     # 2) 计算每段的 distance 起止点
+    # 定义段范围列表 segment_ranges，元素为 (d_start, d_end)，表示每段的 distance 起止点
     segment_ranges = []
+    # 遍历每段，计算起止 distance，并保存到 segment_ranges
     for i, nseg in enumerate(segment_nq):
         i_start = segment_start[i]
         i_end = i_start + nseg - 1
         d_start = distances[i_start]
         d_end = distances[i_end]
         segment_ranges.append((d_start, d_end))
-    # 3) 组装 header
+    # 3) 根据 path_connections 获取段间连续性，找出断点 distance
+    # 定义断点集合
+    breaks = []
+    # 遍历path_connections的conn，找出断点 distance
+    for i, conn in enumerate(path_connections):
+        # conn 为 False 表示当前段与下一段不连接，即存在断点
+        if conn is False:
+            # 当前段的终点 distance 就是断点
+            d_break = segment_ranges[i][1]   # 当前段的结束 distance
+            breaks.append(d_break)
+    # 4) 组装 header
+    # 定义 header_lines 列表，保存 header 的每一行文本
     header_lines = []
+    # 添加文件说明和基本信息
     header_lines.append("# Phonon dispersion data (MatterSim + phonopy)")
+    # 添加 nqpoint 和 nmodes 信息
     header_lines.append(f"# NQPOINTS & NMODES: {{nqpoint}} {{nmodes}}")
     # 定义 shift 变量，初始为0
     shift = 0
