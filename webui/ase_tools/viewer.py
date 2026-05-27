@@ -101,7 +101,7 @@ def show_structure_viewer_page():
     # -----------------------------
     # 顶部固定渲染（不会随 tab 切换而重建）
     # -----------------------------
-    st.subheader("结构预览（固定显示）")
+    st.subheader("结构预览")
     render_structure_with_info(atoms, title="结构查看", prefix="viewer")
 
     # -----------------------------

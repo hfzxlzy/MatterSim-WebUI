@@ -84,7 +84,6 @@ def render_structure_with_info(
             value=default_a,
             key=f"{prefix}_atom_A"
         )
-        
     with col2:
         #切换渲染模式
         render_mode = st.selectbox(
