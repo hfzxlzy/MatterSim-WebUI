@@ -40,7 +40,7 @@ def build_training_cmd(**kwargs):
     add_flag(cmd, "--include_stresses", kwargs["include_stresses"])
     add_arg(cmd, "--stress_loss_ratio", kwargs["stress_loss_ratio"])
 
-    add_flag(cmd, "--save_checkpoints", kwargs["save_checkpoints"])
+    add_flag(cmd, "--save_checkpoint", kwargs["save_checkpoint"])
     add_arg(cmd, "--ckpt_interval", kwargs["ckpt_interval"])
 
     add_flag(cmd, "--re_normalize", kwargs["re_normalize"])

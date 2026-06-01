@@ -176,16 +176,16 @@ def show_training_page(slurm_cfg):
         else:
             stress_loss_ratio = None
     with colw:
-        save_checkpoints = st.checkbox(
-            "Save Checkpoints",
-            help="Whether to save checkpoints during training. Default is False.  \n是否在训练过程中保存模型检查点，默认为False",
+        save_checkpoint = st.checkbox(
+            "Save Checkpoint",
+            help="Whether to save checkpoint during training. Default is False.  \n是否在训练过程中保存模型检查点，默认为False",
             value=False
         )
-        if save_checkpoints:
+        if save_checkpoint:
             with st.expander("Checkpoint Interval"):
                 ckpt_interval = st.number_input(
                 "Checkpoint Interval (epochs)",
-                help="Interval (in epochs) to save checkpoints. Default is 10.  \n保存模型检查点的间隔，单位为epoch，默认为10",
+                help="Interval (in epochs) to save checkpoint. Default is 10.  \n保存模型检查点的间隔，单位为epoch，默认为10",
                 value=10
                 )
         else:
@@ -214,16 +214,26 @@ def show_training_page(slurm_cfg):
                     help="Key for shifting energy. Only used when re_normalize is True. Default is “per_species_energy_mean_linear_reg”  \n用于平移能量的键值，仅在重新归一化时使用，默认为“per_species_energy_mean_linear_reg”",
                     value="per_species_energy_mean_linear_reg"
                 )
-                init_scale = st.text_input(
+                init_scale_raw = st.number_input(
                     "Initial scale value",
                     help="Initial scale value. Only used when re_normalize is True. Default is None.  \n初始缩放值，仅在重新归一化时使用，默认为None",
-                    value=""
+                    value=1.0, 
+                    min_value=1e-6,
+                    max_value=100.0,
+                    format="%.6f"
                 )
-                init_shift = st.text_input(
+                # 默认值 1.0 → 视为 None
+                init_scale = None if init_scale_raw == 1.0 else init_scale_raw
+                init_shift_raw = st.number_input(
                     "Initial shift value",
                     help="Initial shift value. Only used when re_normalize is True. Default is None.  \n初始平移值，仅在重新归一化时使用，默认为None",
-                    value=""
+                    value=0.0,
+                    min_value=-1000.0,
+                    max_value=1000.0,
+                    format="%.6f"
                 )
+                # 默认值 0.0 → 视为 None
+                init_shift = None if init_shift_raw == 0.0 else init_shift_raw
                 trainable_scale = st.checkbox(
                     "Trainable Scale",
                     help="Whether the scale is trainable. Only used when re_normalize is True. Default is False.  \n缩放是否可训练，仅在重新归一化时使用，默认为False",
@@ -249,11 +259,13 @@ def show_training_page(slurm_cfg):
         )
         if wandb:
             with st.expander("Weights & Biases API Key"):
-                wandb_api_key = st.text_input(
+                wandb_api_key_raw = st.text_input(
                 "Weights & Biases API Key",
                 help="API key for Weights & Biases. Default is None.  \nWeights & Biases的API密钥，默认为None",
-                value=None
+                value=""
                 )
+                # 如果输入的API密钥为空字符串，则视为None
+                wandb_api_key = wandb_api_key_raw if wandb_api_key_raw.strip() != "" else None
                 wandb_project = st.text_input(
                 "Weights & Biases Project Name",
                 help="Project name for Weights & Biases. Default is “wandb_test”  \nWeights & Biases的项目名称，默认为“wandb_test”",
@@ -293,7 +305,7 @@ def show_training_page(slurm_cfg):
     force_loss_ratio=force_loss_ratio,
     include_stresses=include_stresses,
     stress_loss_ratio=stress_loss_ratio,
-    save_checkpoints=save_checkpoints,
+    save_checkpoint=save_checkpoint,
     ckpt_interval=ckpt_interval,
     re_normalize=re_normalize,
     scale_key=scale_key,
