@@ -19,7 +19,7 @@ DATA_DIR = os.path.join(MATTERSIM_ROOT, "mattersim/tests/data")
 # 基准文件位置
 BENCHMARK_DIR = os.path.join(MATTERSIM_ROOT, "mattersim/data/benchmarks")
 # 微调入口脚本位置
-FINETUNE_MATTERSIM_DIR = os.path.join(MATTERSIM_ROOT, "mattersim//training/finetune_mattersim.py")
+FINETUNE_MATTERSIM_DIR = os.path.join(MATTERSIM_ROOT, "mattersim/src/mattersim/training/finetune_mattersim.py")
 
 # 临时文件位置
 TMP = os.path.join(MATTERSIM_ROOT, "tmp")
