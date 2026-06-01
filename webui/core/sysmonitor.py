@@ -42,8 +42,8 @@ def cpu_ram_info():
     #返回CPU和RAM使用率、总量
     return cpu_util, ram_used, ram_total
 
-# 调用碎片组件构建系统监控界面，每0.25秒刷新一次
-@st.fragment(run_every=0.25)
+# 调用碎片组件构建系统监控界面，每0.5秒刷新一次
+@st.fragment(run_every=0.5)
 #定义系统监控组件
 def sys_monitor_fragment():
     st.subheader("系统监控")
@@ -61,8 +61,8 @@ def sys_monitor_fragment():
     else:
         st.warning("未检测到 GPU")
 
-# 调用碎片组件构建系统监控界面，每0.25秒刷新一次
-@st.fragment(run_every=0.25)
+# 调用碎片组件构建系统监控界面，每0.5秒刷新一次
+@st.fragment(run_every=0.5)
 #定义日志显示组件
 def log_fragment():
     st.subheader("运行日志")
