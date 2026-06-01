@@ -9,6 +9,9 @@ if ROOT not in sys.path:
 import streamlit as st
 # 导入shutil库用于文件操作，如复制、移动等
 import shutil
+# 导入mattersim库，获取当前安装的版本号用于显示在页面标题中
+import mattersim
+
 # 导入核心模块
 from webui.core.sysmonitor import sys_monitor_fragment,log_fragment
 from webui.core.history import load_history
@@ -41,16 +44,17 @@ if slurm_available():
     if enable_slurm:
         msg_box.success("已启用 Slurm 任务调度模式，作业将通过 Slurm 提交。")
     else:
-        msg_box.warning("检测到 Slurm 环境，建议使用 Slurm 调度模式，防止影响 HPC 集群的资源调度和管理。")
+        msg_box.warning("检测到环境存在 Slurm ，推荐使用 Slurm 调度计算资源，防止影响其他 HPC 用户。")
 else:
     enable_slurm = False
 
 # ---------------- Base UI Setup ----------------
 # 设置Streamlit页面配置
 st.set_page_config(layout="wide", page_title="MatterSim WebUI")
-
+# 获取当前安装的mattersim版本号，用于显示在页面标题中
+mattersim_version = mattersim.__version__
 # 页面标题
-st.title("MatterSim WebUI 控制面板")
+st.title(f"MatterSim(ver.{mattersim_version}) 控制面板")
 
 # 加载插件并注册功能
 if not hasattr(st, "_addons_loaded"):
