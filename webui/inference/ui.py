@@ -14,7 +14,7 @@ from webui.inference.py_parameters import render_plugin_parameters
 from webui.inference.py_script import update_script
 from webui.inference.infer_core import SCRIPT_REGISTRY
 
-def inference_ui():
+def inference_ui(slurm_cfg):
     st.subheader("推理模式选择")
 
     tab_view, tab_convert = st.tabs(["构建脚本", "导入脚本"])
@@ -148,9 +148,10 @@ def inference_ui():
                 f.write(edited_script)
 
             cmd = [SIM_ENV_PYTHON, script_path]
+            
             threading.Thread(
                 target=run_command,
-                args=(cmd, "INFER"),
+                args=(cmd, "INFER", slurm_cfg),
                 daemon=True
             ).start()
             st.success("脚本已开始运行，请查看日志输出。")

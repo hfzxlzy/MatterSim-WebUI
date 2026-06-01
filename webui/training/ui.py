@@ -12,7 +12,7 @@ from webui.training.cmd_builder import build_training_cmd, build_pretty_cmd
 from webui.training.executor import start_training
 
 # 训练界面组件
-def show_training_page():
+def show_training_page(slurm_cfg):
     st.subheader("训练参数")
     coll, colr = st.columns([1, 1])
     with coll:
@@ -314,4 +314,5 @@ def show_training_page():
 
     # 开始训练按钮
     if st.button("开始训练"):
-        start_training(cmd, model)
+        start_training(cmd, model, slurm_cfg)
+        st.success("训练已开始，请查看日志输出。")
