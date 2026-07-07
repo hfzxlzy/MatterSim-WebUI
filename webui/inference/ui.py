@@ -14,7 +14,8 @@ from webui.inference.py_parameters import render_plugin_parameters
 from webui.inference.py_script import update_script
 from webui.inference.infer_core import SCRIPT_REGISTRY
 
-def inference_ui(slurm_cfg):
+# inference控制台UI生成函数
+def inference_ui_console(slurm_cfg):
     st.subheader("推理模式选择")
 
     tab_view, tab_convert = st.tabs(["构建脚本", "导入脚本"])
@@ -155,12 +156,23 @@ def inference_ui(slurm_cfg):
                 daemon=True
             ).start()
             st.success("脚本已开始运行，请查看日志输出。")
-        # -----------------------------
-        # 插件结果展示 UI 注入点
-        # -----------------------------
-        if hasattr(plugin, "render_result_ui"):
-            # checkbox 控制显示
-            show = st.checkbox("结果展示", value=False)
-            # 如果选中，则调用插件的结果展示 UI 方法，取消选中则隐藏结果展示
-            if show:
-                plugin.render_result_ui()
+
+# inference结果展示UI生成函数
+def inference_ui_result():
+    # 从页面获取插件模式信息
+    mode = st.session_state.get("current_mode", None)
+    # 如果没有插件信息直接返回
+    if not mode:
+        return
+    # 定义当前插件值
+    plugin = SCRIPT_REGISTRY.get(mode)
+    # 如果所选插件不存在直接返回
+    if not plugin:
+        return
+    # 插件结果展示 UI 注入点
+    if hasattr(plugin, "render_result_ui"):
+        # checkbox 控制显示
+        show = st.checkbox("结果展示", value=False)
+        # 如果选中，则调用插件的结果展示 UI 方法，取消选中则隐藏结果展示
+        if show:
+            plugin.render_result_ui()
