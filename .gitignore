@@ -21,3 +21,24 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+
+# Node / Web build artifacts (if any)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Local config
+*.local
+*.env
+
+# External libraries (we manage only build/ output)
+webui/ase_tools/modelbuilder/three.js-master/
+webui/ase_tools/modelbuilder/builder
+webui/ase_tools/modelbuilder/*.html
+
+# Optional: ignore other external libs
+external/
+third_party/
+
+# Cache
+.cache/
