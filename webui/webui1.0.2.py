@@ -21,7 +21,7 @@ from webui.ase_tools.viewer import show_structure_viewer_page
 from webui.ase_tools.editor import show_structure_editor
 from webui.ase_tools.builder import show_structure_builder
 # 导入inference功能组件相关模块
-from webui.inference.ui import inference_ui
+from webui.inference.ui import inference_ui_console, inference_ui_result
 from webui.inference.infer_core import load_addon_plugins
 # 导入training功能组件相关模块
 from webui.training.ui import show_training_page
@@ -86,6 +86,9 @@ if mode == "历史记录":
 # 非ASE及历史记录模式创建两列布局(左侧用于主要操作，右侧用于GPU监控)
 col_left, col_right = st.columns([2, 1])
 
+# 第二行：结果展示区域（整行）
+result_area = st.container()
+
 # 在右侧列中显示GPU监控界面
 with col_right:
     # 调用系统监控组件
@@ -138,4 +141,12 @@ with col_left:
         # 将slurm_cfg从session_state中获取，传递给推理界面以供使用
         slurm_cfg = st.session_state.get("slurm_cfg", None)
         # 调用inference_ui函数显示推理界面
-        inference_ui(slurm_cfg)
+        # 调用inference_ui_console函数显示推理界面
+        inference_ui_console(slurm_cfg)
+# 在第二行整行展示计算结果
+with result_area:
+    #显示mattersim推理模式运行界面
+    if mode == "推理":
+        # 调用inference_ui_result函数显示推理结果
+        inference_ui_result()
+
