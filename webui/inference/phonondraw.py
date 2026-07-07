@@ -1,6 +1,8 @@
 # 声子计算结果绘图
 # 调用os库
 import os
+# 调用h5py库
+import h5py
 # 调用numpy库
 import numpy as np
 # 调用plotly库
@@ -9,6 +11,10 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 # 调用streamlit库
 import streamlit as st
+# 调用render模块对输出结构进行可视化解析
+from webui.ase_tools.render import render_structure_with_info
+# 调用loadstructure模块解析对输出的H5文件
+from webui.ase_tools.loadstructure import load_structure_from_h5
 
 # 获取、修正K-path标签和位置并记录断点的函数
 def parse_kpath_from_dat(band_path):
@@ -75,18 +81,91 @@ def parse_kpath_from_dat(band_path):
     # 返回标签列表、位置列表和断点列表
     return labels, positions, breaks
 
+# 根据 Plotly 点击事件返回的距离值和模式编号，从 band.h5 中提取对应的 q 点、频率、本征向量
+def get_phonon_mode(h5_path, clicked_distance, mode_index):
+    # === 输入检查 ===
+    if clicked_distance is None or mode_index is None:
+        return None
+    # 防止 clicked_distance 是 NaN
+    if isinstance(clicked_distance, float) and np.isnan(clicked_distance):
+        return None
+    with h5py.File(h5_path, "r") as h5:
+        # 723 个距离值
+        distances = h5["phonon/distances"][:].flatten()      # (723,)
+        # 723×72 频率矩阵
+        freqs = h5["phonon/frequencies"][:]                  # (723, 72)
+        # 723×72×72 本征向量矩阵（复数）
+        eigs = h5["phonon/eigenvectors"][:]                  # (723, 72, 72)
+        # 723×3 q 点坐标
+        qpts = h5["phonon/qpoints"][:]                       # (723, 3)
+    # 1. 根据距离值找到最近的 q 点
+    q_index = int(np.argmin(np.abs(distances - clicked_distance)))
+    # 2. 提取该 q 点该模式真实distance值
+    rela_distance = float(distances[q_index])
+    # 3. 声子支编号
+    num = mode_index + 1
+    # 4. 提取该 q 点该模式的频率
+    freq = float(freqs[q_index, mode_index])
+    # 5. 提取该 q 点该模式的 72 维复数本征向量
+    eig_flat = eigs[q_index, :, mode_index]                    # shape (72,)
+    # 6. reshape 成 24×3（三维复数）
+    # 自动判断原子数
+    natom_primitive = eig_flat.size // 3
+    eig_complex = eig_flat.reshape(natom_primitive, 3)         # shape (24, 3)
+    # 分离实部 / 虚部
+    eig_real = eig_complex.real                  # (24, 3)
+    eig_imag = eig_complex.imag                  # (24, 3)
+    # 7. 提取该 q 点的倒空间坐标
+    q_coord = qpts[q_index]                                 # shape (3,)
+    
+    return q_index, q_coord, rela_distance, num, freq, eig_real, eig_imag
+
+# 修改声子数据格式为json
+def build_phonon_data(q_coord, real_distance, num, freq, eig_real, eig_imag):
+    def fmt(x):
+        # 保留 15 位小数，避免科学计数法
+        return float(f"{x:.15f}")
+    # 组装单个模式的 eigenvector：24 原子 × 3 方向，每个方向 [real, imag]
+    eigenvector = []
+    natom = eig_real.shape[0]
+    for i in range(natom):
+        atom_vec = []
+        for d in range(3):  # x, y, z
+            atom_vec.append([
+                fmt(eig_real[i, d]),
+                fmt(eig_imag[i, d]),
+            ])
+        eigenvector.append(atom_vec)
+    phononData = {
+        "q_position": [fmt(q_coord[0]), fmt(q_coord[1]), fmt(q_coord[2])],
+        "distance": fmt(real_distance),
+        "band": [
+            {
+                "num": num,  
+                "frequency": fmt(freq),
+                "eigenvector": eigenvector,
+            }
+        ],
+    }
+    return phononData
+
 # 使用 phonon_band.dat 和 total_dos.dat 绘制交互式声子色散 + DOS 图的函数
 def plot_phonon_interactive(work_dir):
     # 声子色散构建文件路径(phonon_band.dat)
     band_path = os.path.join(work_dir, "phonon_band.dat")
     # 声子态密度构建文件路径(total_dos.dat)
     dos_path = os.path.join(work_dir, "total_dos.dat")
+    # 声子信息文件路径(band.h5)
+    h5_path = os.path.join(work_dir, "band.h5")
     # === 文件检查 ===
     if not os.path.exists(band_path):
         st.error(f"未找到 {band_path}，请先运行声子计算。")
         return
     if not os.path.exists(dos_path):
         st.error(f"未找到 {dos_path}，请先运行声子计算。")
+        return
+    if not os.path.exists(h5_path):
+        st.error(f"未找到 {h5_path}，请先运行声子计算。")
         return
     # === 读取数据 ===
     band_data = np.loadtxt(band_path, comments="#")
@@ -104,7 +183,7 @@ def plot_phonon_interactive(work_dir):
     fig = go.Figure()
     # === DOS ===
     # 绘制态密度曲线，x轴为态密度，y轴为频率，使用第二个 x 轴（x2）
-    fig.add_trace(go.Scatter(
+    fig.add_trace(go.Scattergl(
         x=dos_val,    # x轴为态密度
         y=dos_freq,    # y轴为频率
         mode="lines",    # 线条模式：线连接
@@ -132,11 +211,16 @@ def plot_phonon_interactive(work_dir):
                 x.append(distances[j] + gap)
                 y.append(np.nan)
         # 绘制第 i 条声子能带
-        fig.add_trace(go.Scatter(
+        fig.add_trace(go.Scattergl(
             x=x,    # x轴为x
             y=y,    # y轴为y
-            mode="lines",    # 线条模式：线连接
+            mode="lines+markers",    # 线条模式：线连接
             line=dict(color="red", width=1),    # 线条样式：红色，宽度1
+            marker=dict(
+                size=6,
+                color="rgba(0,0,0,0)",  # 完全透明
+                line=dict(width=0)
+            ),
             hovertemplate="Distance: %{x:.3f}<br>Freq: %{y:.3f} THz",    # 鼠标悬停提示：显示 distance 和频率
             name=f"Mode {i+1}"    # 图例名称：Mode 1, Mode 2, ...
             )
@@ -209,7 +293,8 @@ def plot_phonon_interactive(work_dir):
         hovermode='closest',    # 鼠标悬停模式：显示最近的数据点
         #width=900,    # 图表宽度
         height=600,    # 图表高度
-        modebar_add=["toImage"]    # 添加保存为图片按钮
+        modebar_add=["toImage"],    # 添加保存为图片按钮
+        clickmode='event+select'  # 启用点击事件
     )
     # === 蓝色十字参考线 ===
     # 鼠标悬停时显示参考线横轴
@@ -228,5 +313,66 @@ def plot_phonon_interactive(work_dir):
         spikecolor="blue",    # 参考线颜色：蓝色
         spikethickness=1    # 参考线宽度：1
         )
-    # 显示图表(填满宽度)
-    st.plotly_chart(fig, width="stretch")
+    # === 顶部：左右布局 ===
+    col_left, col_right = st.columns([2, 1])   # 左 2/3，右 1/3
+    with col_left:
+        # === 显示图表并捕获点击事件 ===
+        event = st.plotly_chart(
+            fig,
+            key="phonon_plot",
+            on_select="rerun",        # 修正：应该是 on_select，不是 on_click
+            selection_mode=("points",),  # 指定选择模式
+            use_container_width=True
+        )
+    with col_right:
+        # === 结构解析 ===
+        if os.path.exists(h5_path):
+            atoms, bz_json = load_structure_from_h5(h5_path, labels_info)
+            #print(bz_json)
+            # 展示布里渊区
+            st.subheader("布里渊区")
+            render_structure_with_info(
+                mode="bz",
+                Bz=bz_json,
+                TJSmode="auto",
+                height=400, 
+                width=400
+            )
+        else:
+            st.error("未找到 band.h5，无法解析结构")
+            return
+    # 只在第一次渲染时显示
+    if "plot_ready" not in st.session_state:
+        st.session_state.plot_ready = True
+        st.success("声子图谱已生成，请点击能带曲线查看对应模式")
+    # === 处理点击事件 ===
+    clicked_distance = None
+    mode_index = None
+    # 当点击发生时
+    if event and event.selection and event.selection.points:
+        p = event.selection.points[0]    # 定义图中p点
+        clicked_distance = p.get("x")    # 获取p点对应的x值
+        curve = p.get("curve_number")    # 获取p点所在的曲线
+        point_index = p.get("point_index")    # 获取p点在曲线的位置
+        # DOS 是 trace 0
+        if curve > 0:
+            mode_index = curve - 1
+        st.success(f"点击到 mode={mode_index}, q_index={point_index}, distance={clicked_distance:.4f}")
+    # === 声子数据（从 HDF5 读取 eigenvectors）===
+    st.markdown("---")
+    result = get_phonon_mode(h5_path, clicked_distance, mode_index)
+    if result is None:
+        # 没有有效点击，直接返回或只画图不做后续
+        return
+    q_index, q_coord, real_distance, num, freq, eig_real, eig_imag =result
+    phonon = build_phonon_data(q_coord, real_distance, num, freq, eig_real, eig_imag )
+    #print(phonon)
+    # === 渲染结构 + 声子信息 ===
+    render_structure_with_info(
+        mode="cell",
+        atoms=atoms, 
+        phonon=phonon,
+        TJSmode="auto",
+        height=800, 
+        width="stretch"
+    )

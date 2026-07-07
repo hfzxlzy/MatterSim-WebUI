@@ -19,6 +19,76 @@ ph = PhononWorkflow(
 
 has_imag, phonons = ph.run()
 
+# 转译为hdf5
+def export_phonon_hdf5(phonons, atoms, path):
+    # 从 phonopy 取出 band 数据（路径）
+    band = phonons.get_band_structure_dict()
+    # 从 phonopy 取出 structure 数据（路径）
+    bs = phonons._band_structure 
+    # 把每段路径拼接成完整路径
+    distances = np.concatenate(band["distances"])
+    freqs = np.concatenate(band["frequencies"], axis=0)
+    eigs = np.concatenate(band["eigenvectors"], axis=0)
+    # 获取 q 点坐标（如果有）
+    try:
+        qpoints = np.concatenate(bs.qpoints, axis=0)
+    except:
+        qpoints = np.zeros((freqs.shape[0], 3))
+    # K-path 信息
+    labels = np.array(bs.labels, dtype="S")
+    segment_nq = np.array([len(seg) for seg in band["distances"]])
+    # 用 spglib 找原胞
+    lattice = atoms.cell.array
+    frac = atoms.get_scaled_positions()
+    numbers = atoms.get_atomic_numbers()
+    cell = (lattice, frac, numbers)
+    primitive = spglib.find_primitive(cell, symprec=1e-5)
+    if primitive is None:
+        print("[WARN] spglib 未找到原胞，使用输入晶胞")
+        prim_lattice = lattice
+        prim_frac = frac
+        prim_numbers = numbers
+    else:
+        prim_lattice, prim_frac, prim_numbers = primitive
+    # 用 atomic number 转 symbol 转换原子序数和元素符号，并保持变量名称
+    lattice = prim_lattice
+    frac_coords = prim_frac
+    symbols = np.array([chemical_symbols[Z] for Z in prim_numbers], dtype="S")
+    mass = np.array([atomic_masses[Z] for Z in prim_numbers])
+    # 写入 HDF5 
+    with h5py.File(path, "w") as h5:
+        # === structure ===
+        g = h5.create_group("structure")
+        g.create_dataset("lattice", data=lattice)
+        g.create_dataset("frac_coords", data=frac_coords)
+        g.create_dataset("symbols", data=symbols)
+        g.create_dataset("mass", data=mass)
+        g.attrs["natom"] = len(atoms)
+        # === kpath ===
+        g = h5.create_group("kpath")
+        g.create_dataset("labels", data=labels)
+        g.create_dataset("segment_nqpoint", data=segment_nq)
+        g.attrs["nqpoint"] = distances.shape[0]
+        g.attrs["npath"] = len(segment_nq)
+        # === phonon ===
+        g = h5.create_group("phonon")
+        g.create_dataset("distances", data=distances)
+        g.create_dataset("frequencies", data=freqs)
+        g.create_dataset("eigenvectors", data=eigs)
+        g.create_dataset("qpoints", data=qpoints)
+        g.attrs["nmodes"] = freqs.shape[1]
+        # === metadata ===
+        h5.attrs["generator"] = "MatterSim + phonopy"
+
+    print(f"[HDF5] Saved phonon data to {{path}}")
+
+# === 输出 band.hdf5（机器可读、可随机访问） ===
+export_phonon_hdf5(
+    phonons,
+    atoms,
+    os.path.join(ph.work_dir, "band.h5")
+)
+
 # 简单声子谱绘制数据获取函数
 def export_phonon_band(phonons, work_dir):   
     # phonopy 对象获取 K-path labels

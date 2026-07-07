@@ -3,7 +3,9 @@
 #通用库调用头文件
 COMMON_HANDER =  """
 import os
+import h5py
 import torch
+import spglib
 import numpy as np
 from ase.io import read
 from loguru import logger
@@ -11,6 +13,7 @@ from ase.units import GPa
 from ase.build import bulk
 from ase.visualize import view
 from ase.data.colors import jmol_colors
+from ase.data import chemical_symbols, atomic_masses
 from mattersim.applications.relax import Relaxer
 from mattersim.forcefield.potential import Potential
 from mattersim.applications.phonon import PhononWorkflow
