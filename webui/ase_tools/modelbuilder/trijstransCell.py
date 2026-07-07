@@ -10,8 +10,6 @@ def Cell_renderer_html(
     rawdata,    # 结构数据
     phonondata,    # 声子数据
     mode="auto",    # auto/local/cdn
-    threejs_local="/app/static/3jsmain/three.module.js",    # local_path
-    addons_local="/app/static/3addons/",    # local_path
     threejs_url="https://cdn.jsdelivr.net/npm/three@v0.185.0/build/three.module.js",    # cdn_url
     addons_url="https://cdn.jsdelivr.net/npm/three@v0.185.0/examples/jsm/",    # cdn_url
 ):
@@ -32,23 +30,30 @@ def Cell_renderer_html(
 """
     # 3js调用信息头
     if mode == "local":
+        threejs_bundle = Path(THREEJS_BUNDLE).read_text(encoding='utf-8')
         load_js = f"""
-    <script type="importmap">
-    {{
-      "imports":{{
-        "three": "{threejs_local}",
-        "three/addons/": "{addons_local}"
-      }}
-    }}
-    </script>
     <script type="module">
-      import * as THREE from 'three';
-      import {{ OrbitControls }} from 'three/addons/controls/OrbitControls.js';
-      import {{ ConvexGeometrys }} from 'three/addons/geometries/ConvexGeometry.js';
+      // ============ 注入打包代码 ============
+      const bundleCode = {json.dumps(threejs_bundle)};
+      // ============ 创建 Blob URL ============
+      const bundleURL = URL.createObjectURL(
+        new Blob([bundleCode], {{ type: 'application/javascript' }})
+      );
+      console.log('✅ Blob URL 创建完成');
+      // ============ 导入 ============
+      // Rollup 打包的 ESM 会导出所有 export * 的内容
+      const bundleExports = await import(bundleURL);
+      console.log('✅ Three.js 加载成功');
+      //console.log('导出内容:', Object.keys(THREE));
+      // ============ 提取需要的模块 ============
+      // Rollup 打包后，所有 export * 的内容都在 THREE 对象上
+      ({{ OrbitControls, ConvexGeometry }} = bundleExports);
+      // THREE 可能是 bundleExports 本身，也可能在 default 里
+      THREE = bundleExports.default || bundleExports;
 
-      console.log("THREE =", THREE);
-      console.log("OrbitControls =", OrbitControls);
-      console.log("ConvexGeometry =", ConvexGeometry);
+      console.log('THREE =', THREE);
+      console.log('OrbitControls =', OrbitControls);
+      console.log('ConvexGeometry =', ConvexGeometry);
 """
     elif mode == "cdn":
         load_js = f"""
