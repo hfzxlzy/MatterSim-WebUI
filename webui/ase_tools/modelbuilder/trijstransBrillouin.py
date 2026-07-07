@@ -232,7 +232,7 @@ def js_renderer(load_js):
     }}
     // 下角标转换函数
     function toSubscript(label) {{
-      return label.replace(/_(\d+)/g, (_, num) =>
+      return label.replace(/_(\\d+)/g, (_, num) =>
         num.split("").map(d => "₀₁₂₃₄₅₆₇₈₉"[d]).join("")
       );
     }}
