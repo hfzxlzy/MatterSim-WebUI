@@ -6,7 +6,7 @@ from io import StringIO
 # 调用ase库构建晶体结构
 from ase.build import bulk
 # 调用render模块中的函数渲染结构和相关信息
-from webui.ase_tools.render import render_structure_with_info
+from webui.ase_tools.render_py3dmol import render_structure_with_info
 
 # 结构构建组件
 def show_structure_builder():

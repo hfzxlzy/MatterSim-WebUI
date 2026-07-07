@@ -11,7 +11,7 @@ from io import StringIO, BytesIO
 from ase import Atoms, Atom
 from ase.io import read
 #调用render模块中的函数渲染结构和相关信息
-from webui.ase_tools.render import render_structure_with_info
+from webui.ase_tools.render_py3dmol import render_structure_with_info
 
 # QE输入文件解析函数
 def parse_qe_structure(text):

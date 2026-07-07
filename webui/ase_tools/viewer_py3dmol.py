@@ -4,7 +4,7 @@ import streamlit as st
 # 调用io库处理文件输入输出
 from io import StringIO, BytesIO
 #调用render模块中的函数渲染结构和相关信息
-from webui.ase_tools.render import render_structure_with_info
+from webui.ase_tools.render_py3dmol import render_structure_with_info
 from webui.ase_tools.loadstructure import load_structure
 
 # 结构查看组件
