@@ -32,8 +32,6 @@ def render_structure_with_info(
             rawdata=json_data,    #结构数据
             phonondata=phonon,    #声子数据
             mode=TJSmode,    # auto/local/cdn
-            threejs_local="/app/static/3jsmain/three.module.js",    # local_path
-            addons_local="/app/static/3addons/",    # local_path
             threejs_url="https://cdn.jsdelivr.net/npm/three@v0.185.0/build/three.module.js",    # cdn_url
             addons_url="https://cdn.jsdelivr.net/npm/three@v0.185.0/examples/jsm/",    # cdn_url
         )
@@ -41,8 +39,6 @@ def render_structure_with_info(
         three_html = Brillouin_renderer_html(
             Bz=Bz,    #结构数据
             mode=TJSmode,    # auto/local/cdn
-            threejs_local="/app/static/3jsmain/three.module.js",    # local_path
-            addons_local="/app/static/3addons/",    # local_path
             threejs_url="https://cdn.jsdelivr.net/npm/three@v0.185.0/build/three.module.js",    # cdn_url
             addons_url="https://cdn.jsdelivr.net/npm/three@v0.185.0/examples/jsm/",    # cdn_url
         )
