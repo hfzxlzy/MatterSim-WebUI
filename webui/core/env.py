@@ -26,6 +26,9 @@ TMP = os.path.join(MATTERSIM_ROOT, "tmp")
 # 自动检测并创建 tmp 目录
 os.makedirs(TMP, exist_ok=True)
 
+# Three.js整合esm文件位置
+THREEJS_BUNDLE = os.path.join(MATTERSIM_ROOT, "webui/ase_tools/modelbuilder/three.bundle.js")
+
 # 模型预设路径列表，包含多个示例模型文件的路径
 MODEL_PRESETS = [
     os.path.join(MODELS_DIR, "mattersim-v1.0.0-1M.pth"),
