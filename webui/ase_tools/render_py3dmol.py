@@ -5,8 +5,6 @@ import streamlit as st
 import py3Dmol
 # 调用io库中的StringIO类处理字符串输入输出，方便在Web界面上显示结构信息
 from io import StringIO
-# 导入steamlit的components模块，提供了在Streamlit应用中嵌入HTML、JavaScript等自定义组件的功能
-import streamlit.components.v1 as components
 
 # 结构渲染函数
 def render_structure_with_info(
@@ -86,7 +84,6 @@ def render_structure_with_info(
             value=default_a,
             key=f"{prefix}_atom_A"
         )
-        
     with col2:
         #切换渲染模式
         render_mode = st.selectbox(
@@ -159,7 +156,7 @@ def render_structure_with_info(
     natoms = len(atoms)
 
     cell = atoms.get_cell()
-    if cell is not None and cell.rank == 2:
+    if cell is not None and cell.rank > 0:
         a, b, c = cell.lengths()
         alpha, beta, gamma = cell.angles()
     else:
@@ -197,14 +194,28 @@ def render_structure_with_info(
     # -----------------------------
     view = py3Dmol.view(width=600, height=450)
     view.addModel(xyz_str, "xyz")
-
-    if render_mode == "stick":
-        view.setStyle({"stick": {}})
-    elif render_mode == "ball":
-        view.setStyle({"sphere": {"scale": 0.3}})
-    else:
-        view.setStyle({"stick": {}, "sphere": {"scale": 0.3}})
-
+    # 让 py3Dmol 使用你的颜色表
+    for sym in symbols:
+        color = jmol_colors.get(sym, "#BBBBBB")
+        if render_mode == "stick":
+            view.setStyle(
+                {"elem": sym},
+                {"stick": {"color": color}}
+            )
+        elif render_mode == "ball":
+            view.setStyle(
+                {"elem": sym},
+                {"sphere": {"color": color, "scale": 0.3}}
+            )
+        else:  # ball_and_stick
+            view.setStyle(
+                {"elem": sym},
+                {
+                    "stick": {"color": color},
+                    "sphere": {"color": color, "scale": 0.3}
+                }
+            )
+    # 晶胞框
     if show_cell:
         view.addUnitCell()
     #高亮选中原子
@@ -229,26 +240,11 @@ def render_structure_with_info(
 
     view.zoomTo()
 
-    # -----------------------------
-    # 右侧颜色图例（保持原样）
-    # -----------------------------
-    legend_html = "<div style='padding-left:20px;'>"
-    legend_html += "<div style='font-size:16px;font-weight:bold;margin-bottom:8px;'>原子颜色图例</div>"
-
-    for sym in symbols:
-        color = jmol_colors.get(sym, "#BBBBBB")
-        legend_html += f"""
-        <div style="display:flex;align-items:center;margin-bottom:6px;">
-            <div style="width:16px;height:16px;background:{color};border-radius:50%;margin-right:8px;"></div>
-            <span style="font-size:14px;">{sym}</span>
-        </div>
-        """
-
-    legend_html += "</div>"
 
     # -----------------------------
-    # 卡片顶部（保持原样）
+    # 卡片信息展示
     # -----------------------------
+    # 卡片顶部的HTML结构，包含标题、化学式、原子数和晶胞参数
     html_top = f"""
     <div style="
         border: 2px solid {border_color};
@@ -259,35 +255,63 @@ def render_structure_with_info(
         color: {text_color};
         font-family: Arial, sans-serif;
     ">
-        <div style="font-size: 20px; font-weight: bold; margin-bottom: 6px;">
+        <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">
             {title}
         </div>
-
-        <div style="font-size: 14px; margin-bottom: 12px;">
-            <b>化学式：</b> {formula}<br>
-            <b>原子数：</b> {natoms}<br>
+        <!-- 左右布局 -->
+        <div style="display:flex; justify-content:space-between; gap:20px;">
+            <!-- 左侧：化学式 + 原子数 -->
+            <div style="flex:1; font-size:14px;">
+                <b>化学式：</b> {formula}<br>
+                <b> </b> <br>
+                <b>原子数：</b> {natoms}<br>
+            </div>
+            <!-- 右侧：晶胞参数 -->
+            <div style="flex:1; font-size:14px;">
     """
-
+    # 如果存在晶胞结构则获取晶胞参数
     if a is not None:
         html_top += f"""
-            <b>晶胞参数：</b><br>
-            a = {a:.3f} Å, b = {b:.3f} Å, c = {c:.3f} Å<br>
-            α = {alpha:.2f}°, β = {beta:.2f}°, γ = {gamma:.2f}°
+                <b>晶胞参数：</b><br>
+                a = {a:.3f} Å, b = {b:.3f} Å, c = {c:.3f} Å<br>
+                α = {alpha:.2f}°, β = {beta:.2f}°, γ = {gamma:.2f}°
         """
-
+    # 否则显示无晶胞结构
+    else:
+        html_top += "            <b>晶胞参数：</b> 无晶胞结构<br>"
+    # 关闭右侧 div、左右布局 div
     html_top += """
-        </div>
-
-        <div style="display:flex;flex-direction:row;">
-            <div style="flex:3;">
-    """ + view._make_html() + """
-            </div>
-
-            <div style="flex:1;margin-left:20px;">
-                """ + legend_html + """
             </div>
         </div>
-    </div>
     """
-    # 使用 Streamlit 的 components.html 方法将自定义的 HTML 组件嵌入到应用中，设置适当的高度以确保内容完整显示
-    components.html(html_top, height=650)
+    # 卡片主体的HTML结构，包含3D模型和元素颜色图例
+    html_model = f"""
+    <div style="display:flex; gap:20px;">
+
+        <!-- 左侧模型 -->
+        <div style="flex:1; height:450px;">
+            {view._make_html()}
+        </div>
+
+        <!-- 右侧图例 -->
+        <div style="width:180px; padding-left:10px;">
+            <div style="font-size:16px;font-weight:bold;margin-bottom:8px;">
+                原子颜色图例
+            </div>
+    """
+    # 根据结构中包含的元素种类，生成颜色图例
+    for sym in symbols:
+        color = jmol_colors.get(sym, "#BBBBBB")
+        html_model += f"""
+            <div style="display:flex;align-items:center;margin-bottom:6px;">
+                <div style="width:16px;height:16px;background:{color};
+                        border-radius:50%;margin-right:8px;"></div>
+                <span style="font-size:14px;">{sym}</span>
+            </div>
+        """
+    # 关闭右侧图例 div 和卡片主体 div
+    html_model += "</div></div>"
+    # 将卡片顶部信息和主体模型组合成完整的HTML
+    full_html = html_top + html_model
+    # 使用 Streamlit 的 st.html 方法渲染完整的HTML内容，并允许其中的JavaScript（用于3Dmol渲染）执行
+    st.html(full_html, unsafe_allow_javascript=True)
