@@ -6,14 +6,20 @@ import streamlit as st
 def generate_relax_block(state):
     files = state.file_list
 
+    # 处理非晶体结构声明转译(filter=None)
+    if state.relax_filter == "None":
+        filter_arg = None
+    else:
+        filter_arg = f'"{state.relax_filter}"'
+
     # 单结构松弛
-    if len(files) == 1:
+    if len(files) == 1 and state.relax_mode == "单结构弛豫器（Relaxer）":
         rattle_code = ""
         if state.enable_rattle and state.rattle_std > 0:
             rattle_code = f"atoms.rattle(stdev={state.rattle_std})"
 
         return f"""
-# === 单结构松弛（ASE Relaxer） ===
+# === 单结构弛豫（ASE Relaxer） ===
 
 atoms = structures[0]
 atoms.calc = MatterSimCalculator(load_path=model_path,device=device)
@@ -23,7 +29,7 @@ atoms.calc = MatterSimCalculator(load_path=model_path,device=device)
 
 relaxer = Relaxer(
     optimizer="{state.relax_optimizer}",
-    filter="{state.relax_filter}",
+    filter={filter_arg},
     constrain_symmetry={state.constrain_symmetry}
 )
 
@@ -34,10 +40,10 @@ print("Final energy:", relaxed_atoms.get_potential_energy())
 relaxed_atoms.write("relaxed_structure.traj")
 """
 
-    # 多结构松弛
+    # 多结构弛豫
     else:
         return f"""
-# === 批量结构松弛（BatchRelaxer） ===
+# === 批量结构弛豫（BatchRelaxer） ===
 
 potential = Potential.from_checkpoint(load_path=model_path,device=device)
 
@@ -91,39 +97,71 @@ def register_plugin(ScriptModule):
                 "relax_filter": {
                     "type": "select",
                     "label": "过滤器 filter",
-                    "options": ["EXPCELLFILTER", "UNITCELLFILTER"],
+                    "options": ["EXPCELLFILTER", "UNITCELLFILTER", "None"],
                     "default": "EXPCELLFILTER"
                 },
             }
+            # 读取当前 filter 选择
+            current_mode = st.session_state.get(self.param_key("relax_mode"), "单结构弛豫器（Relaxer）")
             #单结构弛豫参数
-            if n == 1:
+            if n == 1 :
                 params.update({
-                    "constrain_symmetry": {
-                        "type": "checkbox",
-                        "label": "保持晶体对称性",
-                        "default": True
-                    },
-                    "max_steps": {
-                        "type": "number",
-                        "label": "最大步数 steps",
-                        "default": 200,
-                        "min": 1,
-                        "max": 5000
-                    },
-                    "enable_rattle": {
-                        "type": "checkbox",
-                        "label": "扰动初始结构 rattle",
-                        "default": False
-                    },
-                    "rattle_std": {
-                        "type": "number",
-                        "label": "扰动标准差（Å）",
-                        "default": 0.1,
-                        "min": 0.0,
-                        "max": 1.0,
-                        "step": 0.01
-                    },
+                    "relax_mode": {
+                    "type": "select",
+                    "label": "弛豫器模式选择",
+                    "options": ["单结构弛豫器（Relaxer）", "批量弛豫器（BatchRelaxer）"],
+                    "default": "单结构弛豫器（Relaxer）"
+                    }
                 })
+                # 读取当前 relax_mode 选择
+                current_mode = st.session_state.get(self.param_key("relax_mode"), "单结构弛豫器（Relaxer）")
+                # 只有单结构弛豫器模式器时才显示 Relax 相关配置选项
+                if current_mode == "单结构弛豫器（Relaxer）":
+                    # 读取当前 filter 选择
+                    current_filter = st.session_state.get(self.param_key("relax_filter"), "EXPCELLFILTER")
+                    # 只有 filter != None 时才显示 constrain_symmetry
+                    if current_filter != "None":
+                        params.update({
+                            "constrain_symmetry": {
+                                "type": "checkbox",
+                                "label": "保持晶体对称性",
+                                "default": True
+                            }
+                        })
+                    params.update({
+                        "max_steps": {
+                            "type": "number",
+                            "label": "最大步数 steps",
+                            "default": 200,
+                            "min": 1,
+                            "max": 5000
+                        },
+                        "enable_rattle": {
+                            "type": "checkbox",
+                            "label": "扰动初始结构 rattle",
+                            "default": False
+                        },
+                        "rattle_std": {
+                            "type": "number",
+                            "label": "扰动标准差（Å）",
+                            "default": 0.1,
+                            "min": 0.0,
+                            "max": 1.0,
+                            "step": 0.01
+                        },
+                    })
+                #多结构弛豫参数
+                else:
+                    params.update({
+                        "fmax": {
+                            "type": "number",
+                            "label": "收敛阈值 fmax",
+                            "default": 0.05,
+                            "min": 0.01,
+                            "max": 1.0,
+                            "step": 0.01
+                        }
+                    })
             #多结构弛豫参数
             else:
                 params.update({
@@ -145,10 +183,20 @@ def register_plugin(ScriptModule):
             state.relax_filter = state[self.param_key("relax_filter")]
             #单结构key选择
             if len(state.file_list) == 1:
-                state.constrain_symmetry = state[self.param_key("constrain_symmetry")]
-                state.max_steps = state[self.param_key("max_steps")]
-                state.enable_rattle = state[self.param_key("enable_rattle")]
-                state.rattle_std = state[self.param_key("rattle_std")]
+                # 单结构才有 relax_mode
+                state.relax_mode = state[self.param_key("relax_mode")]
+                if state.relax_mode == "单结构弛豫器（Relaxer）":
+                    # 自动联动：filter=None → constrain_symmetry=False
+                    if state.relax_filter == "None":
+                        state.constrain_symmetry = False
+                    else:
+                        state.constrain_symmetry = state[self.param_key("constrain_symmetry")]
+                    state.max_steps = state[self.param_key("max_steps")]
+                    state.enable_rattle = state[self.param_key("enable_rattle")]
+                    state.rattle_std = state[self.param_key("rattle_std")]
+                else:
+                    state.constrain_symmetry = False
+                    state.fmax = state[self.param_key("fmax")]
             #多结构key选择
             else:
                 state.fmax = state[self.param_key("fmax")]
