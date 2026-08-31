@@ -118,9 +118,15 @@ def normalize_atoms(atoms):
             "formula": formula,    # 化学式
             "natoms": natoms    # 原子数
         }
-     # 生成原胞
+    # 若为pbc为全空则结构为分子，不进行 spglib 晶胞标准化，直接返回 JSON
+    if not atoms.pbc.any():
+        return {
+            "molecule": build_json(atoms)
+        }
+    # 否则结构为晶体，进行 spglib 晶胞标准化，返回 JSON
+    # 生成 spglibize 标准原胞
     atoms_prim = spglibize(atoms, primitive=True)
-    # 生成常规胞
+    # 生成spglibize 标准常规胞
     atoms_conv = spglibize(atoms, primitive=False)
     # 返回最终 JSON
     return {

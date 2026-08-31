@@ -62,9 +62,102 @@ def is_molecule_from_neighbors(pos, cell, I, J, S):
 
 # 化学键判断函数（ASE结构，容差，扩张，是否使用 CrystalNN）
 def get_bonds(atoms, dr=1.15, cf=1.5, use_crystalnn=True):
+    # -----------------------------
+    # 00. ASE 邻域搜索，得到所有可能的键（矩阵化）
+    # -----------------------------
+    # 获取原子序数数组 Z
+    Z = atoms.get_atomic_numbers()
+    # 计算邻接列表的 cutoff 值，通常取共价半径之和乘以一个容差系数 cf
+    cutoffs = covalent_radii[Z] * cf
+    # 创建 PrimitiveNeighborList 对象，设置 cutoff 和 PBC 选项
+    nl = PrimitiveNeighborList(
+        cutoffs,    # cutoff 值
+        self_interaction=False,    # 不考虑自环
+        bothways=True,    # i-j 和 j-i 都记录
+        skin=0.0    # 不使用额外的 skin
+    )
+    # 构建邻接列表，ASE 会自动考虑 PBC 和最近 image
+    nl.update(atoms.pbc, atoms.get_cell(complete=True), atoms.positions)
 
     # -----------------------------
-    # 1. 构建 pymatgen 结构对象
+    # 01. 一次性展开所有邻居对，得到 I、J、S 三个数组
+    # -----------------------------
+    # neighbors 是一个列表，长度为原子数，每个元素是一个邻居索引列表
+    neighbors = nl.neighbors
+    # displacements 是一个列表，长度为原子数，每个元素是一个对应邻居的 PBC 偏移列表
+    disps = nl.displacements
+    # 通过重复原子索引和连接邻居索引，得到 I、J、S 三个数组
+    counts = np.array([len(n) for n in neighbors])
+    # I：原子 i 的索引
+    I = np.repeat(np.arange(len(atoms)), counts)    # (M,1)
+    # J：原子 j 的索引
+    J = np.concatenate(neighbors)    # (M,1)
+    # S：原子 j 相对于 i 的 PBC 偏移（整数向量）
+    S = np.concatenate(disps)   # (M,3)
+
+    # -----------------------------
+    # 02. 计算原子间距离（矩阵化）
+    # -----------------------------
+    # 获取原子坐标和晶胞信息
+    pos = atoms.get_positions()
+    # 获取晶胞矩阵（3×3）
+    cell = atoms.cell.array
+    # 计算原子对 (i,j) 的最近 image 坐标
+    rj_image = pos[J] + S @ cell
+    # 计算原子 i 和 j_image 之间的距离
+    rij = rj_image - pos[I]
+    # 计算距离的欧几里得范数，得到一个长度为 M 的距离数组
+    dist = np.linalg.norm(rij, axis=1)
+
+    # -----------------------------
+    # 03. 距离过滤
+    # -----------------------------
+    # 计算每对原子 i 和 j 的共价半径之和乘上容差 dr，得到一个长度为 M 的距离阈值数组
+    R = (covalent_radii[Z][I] + covalent_radii[Z][J]) * dr
+    # 创建一个布尔数组，表示哪些原子对满足距离条件
+    mask = dist < R
+
+    # -----------------------------
+    # 1. 判断是否是分子
+    # -----------------------------
+    is_molecule = is_molecule_from_neighbors(pos, cell, I, J, S)
+
+    # -----------------------------
+    # 2. 分子模式：距离成键 + 电性分析（不参与成键过滤）
+    # -----------------------------
+    if is_molecule:
+        #print("✗ 输入分子结构：不进行价态筛选成键，仅依赖距离判断成键，并基于电负性分析电性")
+        # 根据最终的 mask 过滤 I、J、S 三个数组，得到满足条件的化学键列表
+        I_bond = I[mask]
+        J_bond = J[mask]
+        S_bond = S[mask]
+        # 构建 bonds 列表，每个元素是一个字典，包含原子 i、j 的索引和 PBC 偏移
+        bonds = [
+            {"i": int(i), "j": int(j), "offset": np.round(s).astype(int).tolist()}
+            for i, j, s in zip(I_bond, J_bond, S_bond)
+        ]
+        # 分子：氧化态全 0
+        oxi_states = np.zeros(len(atoms), dtype=int)
+        # 分子：保留电性分析（但不参与成键过滤）
+        symbols = atoms.get_chemical_symbols()
+        atom_charges = np.zeros(len(atoms), dtype=float)
+        coord = np.bincount(I_bond, minlength=len(atoms))
+        sum_nn_en = np.zeros(len(atoms), dtype=float)
+        # 计算每个原子的邻居电负性总和
+        for ii, jj in zip(I_bond, J_bond):
+            sum_nn_en[ii] += ELECTRONEGATIVITY[symbols[jj]]
+        # 遍历相邻原子，计算“原子电性方向”
+        for i in range(len(atoms)):
+            if coord[i] > 0:
+                avg_nn = sum_nn_en[i] / coord[i]
+                atom_charges[i] = avg_nn - ELECTRONEGATIVITY[symbols[i]]
+        # 电性离散化为 -1 / 0 / +1
+        atom_charges = np.sign(atom_charges)
+        # 返回分子模式的 bonds、oxi_states、atom_charges
+        return bonds, oxi_states, atom_charges
+
+    # -----------------------------
+    # 3. 晶体模式：构建 pymatgen 结构对象
     # -----------------------------
     struct = Structure(
         lattice=atoms.cell.array,    # 晶胞
@@ -92,7 +185,7 @@ def get_bonds(atoms, dr=1.15, cf=1.5, use_crystalnn=True):
         bv_success = False
 
     # -----------------------------
-    # 2. 可选：使用 CrystalNN 过滤邻居（矩阵化）
+    # 4. 可选：使用 CrystalNN 过滤邻居（矩阵化）
     # -----------------------------
     if use_crystalnn:
         # 如果不使用 CrystalNN，则创建 CrystalNN 对象
@@ -111,92 +204,27 @@ def get_bonds(atoms, dr=1.15, cf=1.5, use_crystalnn=True):
             cnn_matrix[i, list(js)] = True
     else:
         # 如果不使用 CrystalNN，则 cnn_matrix 设为 None，在后续过滤步骤中跳过
-        cnn_matrix = None
+        cnn_matrix = None  
 
     # -----------------------------
-    # 3. ASE 邻域搜索，得到所有可能的键（矩阵化）
-    # -----------------------------
-    # 获取原子序数数组 Z
-    Z = atoms.get_atomic_numbers()
-    # 计算邻接列表的 cutoff 值，通常取共价半径之和乘以一个容差系数 cf
-    cutoffs = covalent_radii[Z] * cf
-    # 创建 PrimitiveNeighborList 对象，设置 cutoff 和 PBC 选项
-    nl = PrimitiveNeighborList(
-        cutoffs,    # cutoff 值
-        self_interaction=False,    # 不考虑自环
-        bothways=True,    # i-j 和 j-i 都记录
-        skin=0.0    # 不使用额外的 skin
-    )
-    # 构建邻接列表，ASE 会自动考虑 PBC 和最近 image
-    nl.update(atoms.pbc, atoms.get_cell(complete=True), atoms.positions)
-
-    # -----------------------------
-    # 4. 一次性展开所有邻居对，得到 I、J、S 三个数组
-    # -----------------------------
-    # neighbors 是一个列表，长度为原子数，每个元素是一个邻居索引列表
-    neighbors = nl.neighbors
-    # displacements 是一个列表，长度为原子数，每个元素是一个对应邻居的 PBC 偏移列表
-    disps = nl.displacements
-    # 通过重复原子索引和连接邻居索引，得到 I、J、S 三个数组
-    counts = np.array([len(n) for n in neighbors])
-    # I：原子 i 的索引
-    I = np.repeat(np.arange(len(atoms)), counts)    # (M,1)
-    # J：原子 j 的索引
-    J = np.concatenate(neighbors)    # (M,1)
-    # S：原子 j 相对于 i 的 PBC 偏移（整数向量）
-    S = np.concatenate(disps)   # (M,3)
-
-    # -----------------------------
-    # 5. 计算原子间距离（矩阵化）
-    # -----------------------------
-    # 获取原子坐标和晶胞信息
-    pos = atoms.get_positions()
-    # 获取晶胞矩阵（3×3）
-    cell = atoms.cell.array
-    # 计算原子对 (i,j) 的最近 image 坐标
-    rj_image = pos[J] + S @ cell
-    # 计算原子 i 和 j_image 之间的距离
-    rij = rj_image - pos[I]
-    # 计算距离的欧几里得范数，得到一个长度为 M 的距离数组
-    dist = np.linalg.norm(rij, axis=1)
-
-    # -----------------------------
-    # 6. 距离过滤
-    # -----------------------------
-    # 计算每对原子 i 和 j 的共价半径之和乘上容差 dr，得到一个长度为 M 的距离阈值数组
-    R = (covalent_radii[Z][I] + covalent_radii[Z][J]) * dr
-    # 创建一个布尔数组，表示哪些原子对满足距离条件
-    mask = dist < R
-
-    # -----------------------------
-    # 7. 判断是否是分子（仅用于过滤逻辑，不影响 bonds 输出）
-    # -----------------------------
-    is_molecule = is_molecule_from_neighbors(pos, cell, I, J, S)
-
-    # -----------------------------
-    # 8. 价态过滤
+    # 5. 价态过滤
     # -----------------------------
     # 获取原子 i 和 j 的氧化态
     oi = oxi_states[I]
     oj = oxi_states[J]
-    # 若结构为分子则跳过价态筛选
-    if is_molecule:
-        #print("✗ 输入分子结构：不进行价态筛选")
-        pass
-    else:
-        # 价态过滤条件：同号且非 0 的原子对不成键
-        mask &= ~((oi != 0) & (oj != 0) & (oi * oj > 0))
-        #print("✓ 输入晶体结构：进行价态筛选")
+    # 价态过滤条件：同号且非 0 的原子对不成键
+    mask &= ~((oi != 0) & (oj != 0) & (oi * oj > 0))
+    #print("✓ 输入晶体结构：进行价态筛选成键")
 
     # -----------------------------
-    # 8. CNN 过滤（矩阵化）
+    # 6. CNN 过滤（矩阵化）
     # -----------------------------
     # 如果使用 CrystalNN 过滤邻居，则检查 j 是否在 i 的 CrystalNN 邻居列表中
     if cnn_matrix is not None:
         mask &= cnn_matrix[I, J]
 
     # -----------------------------
-    # 9. BVAnalyzer 失败时：推导原子电性（atom_charges）并剔除非键关系
+    # 7. BVAnalyzer 失败时：推导原子电性（atom_charges）并剔除非键关系
     # -----------------------------
     # 获取元素符号
     symbols = atoms.get_chemical_symbols()
@@ -240,7 +268,7 @@ def get_bonds(atoms, dr=1.15, cf=1.5, use_crystalnn=True):
         atom_charges = None
 
     # -----------------------------
-    # 10. 输出 bonds
+    # 8. 输出 bonds
     # -----------------------------
     # 根据最终的 mask 过滤 I、J、S 三个数组，得到满足条件的化学键列表
     I = I[mask]
@@ -256,7 +284,7 @@ def get_bonds(atoms, dr=1.15, cf=1.5, use_crystalnn=True):
         # 遍历过滤后的原子对，构建 bonds 列表
         for i, j, s in zip(I, J, S)
     ]
-
+    # 返回晶体模式的 bonds、oxi_states、atom_charges
     return bonds, oxi_states, atom_charges
     # 返回所有化学键的列表，每个键包含 i, j 和 offset 信息、化合价、原子电性
     # 例如：[{"i": i, "j": j, "offset": [la, lb, lc]}, ...]
