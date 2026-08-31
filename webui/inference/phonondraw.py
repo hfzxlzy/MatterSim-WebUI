@@ -322,7 +322,7 @@ def plot_phonon_interactive(work_dir):
             key="phonon_plot",
             on_select="rerun",        # 修正：应该是 on_select，不是 on_click
             selection_mode=("points",),  # 指定选择模式
-            use_container_width=True
+            width="stretch"
         )
     with col_right:
         # === 结构解析 ===

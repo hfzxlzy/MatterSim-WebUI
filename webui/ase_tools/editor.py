@@ -103,7 +103,7 @@ def show_structure_editor():
 
     edited_df = st.data_editor(
         df,
-        use_container_width=True,
+        width="stretch",
         num_rows="dynamic",
         hide_index=False,
         key="atom_editor"
