@@ -12,7 +12,7 @@ def generate_relax_block(state):
     else:
         filter_arg = f'"{state.relax_filter}"'
 
-    # 单结构松弛
+    # 单结构弛豫
     if len(files) == 1 and state.relax_mode == "单结构弛豫器（Relaxer）":
         rattle_code = ""
         if state.enable_rattle and state.rattle_std > 0:
@@ -37,7 +37,11 @@ success, relaxed_atoms = relaxer.relax(atoms, steps={state.max_steps})
 print("=== Relaxation Finished (ASE Relaxer) ===")
 print("Success:", success)
 print("Final energy:", relaxed_atoms.get_potential_energy())
-relaxed_atoms.write("relaxed_structure.traj")
+input_filename = files[0]
+base_name = os.path.splitext(os.path.basename(input_filename))[0]  # 得到 "lpsocf(1)"
+relaxed_atoms.write("relaxed_structure_{{base_name}}.traj")
+print(f"Saved relaxed structure to relaxed_structure_{{base_name}}.traj")
+
 """
 
     # 多结构弛豫
