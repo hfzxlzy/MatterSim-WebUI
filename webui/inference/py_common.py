@@ -7,7 +7,7 @@ import h5py
 import torch
 import spglib
 import numpy as np
-from ase.io import read
+from ase.io import read, Trajectory
 from loguru import logger
 from ase.units import GPa
 from ase.build import bulk
